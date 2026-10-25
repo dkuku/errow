@@ -158,6 +158,30 @@ defmodule ErrowStringTest do
     test "total_bytes/1" do
       arr = Errow.string(["abc", "de"])
       assert Errow.String.total_bytes(arr) == 5
+      assert Errow.String.buffer_byte_size(arr) == 5
+    end
+
+    test "edge cases: negative step slicing, out of bounds, inspect overflow" do
+      arr = Errow.string(["a", "b", "c", "d"])
+      assert arr[2..0//-1] == ["c", "b", "a"]
+      assert Errow.String.get(arr, 0) == "a"
+      assert Errow.String.get(arr, 99, :default) == :default
+      assert Errow.String.null?(arr, -1) == false
+      assert_raise ArgumentError, fn -> Errow.String.delete_at(arr, 99) end
+      assert Access.pop(arr, 99) == {nil, arr}
+
+      assert_raise ArgumentError, fn ->
+        Access.get_and_update(arr, 99, fn x -> {x, x} end)
+      end
+
+      big = Errow.string(for(i <- 1..10, do: "item_#{i}"))
+      assert inspect(big) =~ "total 10 items"
+
+      assert Enum.member?(Errow.string(), "a") == false
+      assert Enum.slice(arr, 1, 2) == ["b", "c"]
+
+      {_, collector} = Collectable.into(Errow.string())
+      assert collector.({<<>>, <<>>, <<>>, 0, 0, 0}, :halt) == :ok
     end
   end
 end

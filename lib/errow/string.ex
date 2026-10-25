@@ -442,8 +442,8 @@ defimpl Enumerable, for: Errow.String do
   end
 
   def slice(%Errow.String{length: len} = arr) do
-    slicing_fun = fn start, amount ->
-      for idx <- start..(start + amount - 1), idx < len do
+    slicing_fun = fn start, amount, step ->
+      for idx <- start..(start + (amount - 1) * step)//step, idx >= 0 and idx < len do
         Errow.String.get(arr, idx)
       end
     end

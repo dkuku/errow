@@ -70,15 +70,94 @@ defmodule ErrowTest do
     assert b[1] == <<2, 3>>
   end
 
-  test "direct constructor functions" do
-    arr8 = Errow.numeric_8([-1, 0, 1])
-    assert arr8.type == :s8
-    assert arr8.length == 3
+  test "all typed constructor functions" do
+    assert Errow.s8().type == :s8
+    assert Errow.u8().type == :u8
+    assert Errow.s16().type == :s16
+    assert Errow.u16().type == :u16
+    assert Errow.s32().type == :s32
+    assert Errow.u32().type == :u32
+    assert Errow.s64().type == :s64
+    assert Errow.u64().type == :u64
+    assert Errow.s128().type == :s128
+    assert Errow.u128().type == :u128
+    assert Errow.s256().type == :s256
+    assert Errow.u256().type == :u256
+    assert Errow.f32().type == :f32
+    assert Errow.f64().type == :f64
 
-    arr_u8 = Errow.numeric_u8([0, 255])
-    assert arr_u8.type == :u8
+    assert Errow.s16([1, 2]).length == 2
+    assert Errow.u16([1, 2]).length == 2
+    assert Errow.u32([1, 2]).length == 2
+    assert Errow.s64([1, 2]).length == 2
+    assert Errow.u64([1, 2]).length == 2
+    assert Errow.s128([1, 2]).length == 2
+    assert Errow.u128([1, 2]).length == 2
+    assert Errow.s256([1, 2]).length == 2
+    assert Errow.u256([1, 2]).length == 2
+    assert Errow.f64([1.0, 2.0]).length == 2
+  end
 
-    arr32 = Errow.s32([10, 20])
-    assert arr32.type == :s32
+  test "all numeric_X bit-width aliases" do
+    assert Errow.numeric_8().type == :s8
+    assert Errow.numeric_8(:u8).type == :u8
+    assert Errow.numeric_8([1, 2], :u8).type == :u8
+    assert Errow.numeric_u8().type == :u8
+    assert Errow.numeric_u8([1, 2]).length == 2
+
+    assert Errow.numeric_16().type == :s16
+    assert Errow.numeric_16(:u16).type == :u16
+    assert Errow.numeric_16([1, 2]).length == 2
+    assert Errow.numeric_16([1, 2], :u16).type == :u16
+    assert Errow.numeric_u16().type == :u16
+    assert Errow.numeric_u16([1, 2]).length == 2
+
+    assert Errow.numeric_32().type == :s32
+    assert Errow.numeric_32(:u32).type == :u32
+    assert Errow.numeric_32([1, 2]).length == 2
+    assert Errow.numeric_32([1, 2], :u32).type == :u32
+    assert Errow.numeric_u32().type == :u32
+    assert Errow.numeric_u32([1, 2]).length == 2
+
+    assert Errow.numeric_64().type == :s64
+    assert Errow.numeric_64(:u64).type == :u64
+    assert Errow.numeric_64([1, 2]).length == 2
+    assert Errow.numeric_64([1, 2], :u64).type == :u64
+    assert Errow.numeric_u64().type == :u64
+    assert Errow.numeric_u64([1, 2]).length == 2
+
+    assert Errow.numeric_128().type == :s128
+    assert Errow.numeric_128(:u128).type == :u128
+    assert Errow.numeric_128([1, 2]).length == 2
+    assert Errow.numeric_128([1, 2], :u128).type == :u128
+    assert Errow.numeric_u128().type == :u128
+    assert Errow.numeric_u128([1, 2]).length == 2
+
+    assert Errow.numeric_256().type == :s256
+    assert Errow.numeric_256(:u256).type == :u256
+    assert Errow.numeric_256([1, 2]).length == 2
+    assert Errow.numeric_256([1, 2], :u256).type == :u256
+    assert Errow.numeric_u256().type == :u256
+    assert Errow.numeric_u256([1, 2]).length == 2
+
+    assert Errow.numeric_f32().type == :f32
+    assert Errow.numeric_f32([1.0, 2.0]).length == 2
+    assert Errow.numeric_f64().type == :f64
+    assert Errow.numeric_f64([1.0, 2.0]).length == 2
+  end
+
+  test "aggregations facade delegations" do
+    num = Errow.s32([10, 20, 30])
+    assert Errow.sum(num) == 60
+    assert Errow.product(num) == 6000
+    assert Errow.mean(num) == 20.0
+    assert Errow.min(num) == 10
+    assert Errow.max(num) == 30
+    assert Errow.min_max(num) == {10, 30}
+
+    str = Errow.string(["foo", "bar", "baz"])
+    assert Errow.min(str) == "bar"
+    assert Errow.max(str) == "foo"
+    assert Errow.join(str, ", ") == "foo, bar, baz"
   end
 end

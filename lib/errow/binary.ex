@@ -343,8 +343,8 @@ defimpl Enumerable, for: Errow.Binary do
   end
 
   def slice(%Errow.Binary{length: len} = arr) do
-    slicing_fun = fn start, amount ->
-      for idx <- start..(start + amount - 1), idx < len do
+    slicing_fun = fn start, amount, step ->
+      for idx <- start..(start + (amount - 1) * step)//step, idx >= 0 and idx < len do
         Errow.Binary.get(arr, idx)
       end
     end

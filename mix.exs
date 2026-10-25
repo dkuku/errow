@@ -13,7 +13,9 @@ defmodule Errow.MixProject do
       description: "Zero-copy, Apache Arrow-compliant packed arrays for Elixir and the BEAM.",
       package: package(),
       docs: docs(),
-      deps: deps()
+      deps: deps(),
+      source_url: @source_url,
+      homepage_url: @source_url
     ]
   end
 
@@ -25,15 +27,29 @@ defmodule Errow.MixProject do
 
   defp package do
     [
+      maintainers: ["Daniel (kuku)"],
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => @source_url}
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
+      },
+      files: [
+        "lib",
+        "mix.exs",
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md",
+        ".formatter.exs"
+      ]
     ]
   end
 
   defp docs do
     [
       main: "Errow",
-      source_url: @source_url
+      source_ref: "v#{@version}",
+      source_url: @source_url,
+      extras: ["README.md", "CHANGELOG.md", "LICENSE"]
     ]
   end
 

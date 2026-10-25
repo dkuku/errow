@@ -88,11 +88,12 @@ defmodule ErrowCDataTest do
     # Padded to 8 bytes
     assert byte_size(validity) == 8
 
-    # First bit = 1, second bit = 0, third bit = 1
-    <<b0::1, b1::1, b2::1, _rest::bitstring>> = validity
-    assert b0 == 1
-    assert b1 == 0
-    assert b2 == 1
+    # Arrow LSB-first bitmap: slot 0 is bit 0 (val 1), slot 1 is bit 1 (val 2), slot 2 is bit 2 (val 4)
+    # ["Daniel", nil, "Elixir"] -> 1 + 0 + 4 = 5 (0b00000101)
+    <<byte0::8, _rest::binary>> = validity
+    assert Bitwise.band(byte0, 1) == 1
+    assert Bitwise.band(byte0, 2) == 0
+    assert Bitwise.band(byte0, 4) == 4
   end
 
   test "export_buffers with nulls where length is multiple of 8" do
@@ -104,6 +105,9 @@ defmodule ErrowCDataTest do
     assert byte_size(validity) == 8
     assert byte_size(data) == 32
     assert exported.null_count == 1
+    # 7 valid items + 1 null at slot 7 (bit 7): 0b01111111 = 127
+    <<byte0::8, _rest::binary>> = validity
+    assert byte0 == 127
   end
 
   test "export_buffers for binary array" do

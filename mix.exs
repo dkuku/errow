@@ -8,7 +8,7 @@ defmodule Errow.MixProject do
     [
       app: :errow,
       version: @version,
-      elixir: ">= 1.14.0",
+      elixir: ">= 1.16.0",
       start_permanent: Mix.env() == :prod,
       description: "Zero-copy, Apache Arrow-compliant packed arrays for Elixir and the BEAM.",
       package: package(),

@@ -82,12 +82,14 @@ defmodule Benchmark do
     Enum.sum(list)
 
     {t_errow, s_errow} = :timer.tc(fn -> Errow.sum(errow_arr) end)
+    {t_minmax, {min_v, max_v}} = :timer.tc(fn -> Errow.min_max(errow_arr) end)
     {t_enum_errow, _} = :timer.tc(fn -> Enum.sum(errow_arr) end)
     {t_list, s_list} = :timer.tc(fn -> Enum.sum(list) end)
 
-    IO.puts("  * Errow native sum (continuous binary loop): #{t_errow} µs (#{Float.round(t_errow / 1000, 2)} ms) -> #{s_errow}")
-    IO.puts("  * Errow via Enum.sum (Enumerable protocol):  #{t_enum_errow} µs (#{Float.round(t_enum_errow / 1000, 2)} ms)")
-    IO.puts("  * List via Enum.sum:                         #{t_list} µs (#{Float.round(t_list / 1000, 2)} ms) -> #{s_list}")
+    IO.puts("  * Errow native sum (continuous binary loop):     #{t_errow} µs (#{Float.round(t_errow / 1000, 2)} ms) -> #{s_errow}")
+    IO.puts("  * Errow native min_max (continuous binary loop): #{t_minmax} µs (#{Float.round(t_minmax / 1000, 2)} ms) -> {#{min_v}, #{max_v}}")
+    IO.puts("  * Errow via Enum.sum (Enumerable protocol):      #{t_enum_errow} µs (#{Float.round(t_enum_errow / 1000, 2)} ms)")
+    IO.puts("  * List via Enum.sum:                             #{t_list} µs (#{Float.round(t_list / 1000, 2)} ms) -> #{s_list}")
     IO.puts("")
   end
 

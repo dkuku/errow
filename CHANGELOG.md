@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Errow.numeric_8/0,1`, `Errow.numeric_16/0,1`, `Errow.numeric_32/0,1`, etc.
   - Usable without parentheses in comprehensions: `for x <- stream, into: Errow.s8, do: x`.
 - **High-Performance Native Aggregations**:
-  - Unrolled binary loops executing at JIT speed: `sum/2`, `product/2`, `min/2`, `max/2`, `min_max/2`, `mean/2`, `join/3`.
+  - Specialized continuous binary loops executing at JIT speed: `sum/2`, `product/2`, `min/2`, `max/2`, `min_max/2`, `mean/2`, `join/3`.
   - Null skipping (`skip_nulls: true` by default) and $O(1)$ count lookup.
 - **Apache Arrow C Data Interface (`Errow.CData`)**:
   - `export_schema/2`: Generates standard Arrow C schema metadata (`format`, `name`, `flags`, `n_buffers`).
@@ -33,4 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Enumerable`: $O(1)$ `count/1`, `member?/2`, 3-arity `slice/1`, and `reduce/3`.
   - `Collectable`: Specialized tuple accumulator avoiding intermediate struct allocations.
   - `Inspect`: Concise columnar preview with null count and length indicators.
-- **Apache Arrow IPC Test Fixture**: Verified against official `apache/arrow-testing` binary IPC stream.
+- **Apache Arrow Official Testing & Compliance**:
+  - Full integration test suite with official `apache/arrow-testing` fixtures: IPC files (`.arrow`), streams (`.stream`), and schemas (`.json`).
+  - Strict LSB-first validity bitmap export in `Errow.CData` with high-performance tail-recursive binary accumulator.
+  - End-to-end cross-language roundtrip verification with `pyarrow`.
+- **Runtime Environment**:
+  - Requires Elixir `>= 1.16.0` to guarantee Erlang/OTP 26+ runtime environment with native JIT register-packed binary construction and pattern matching.

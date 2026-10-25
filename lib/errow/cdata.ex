@@ -124,11 +124,28 @@ defmodule Errow.CData do
     byte_padded =
       if bit_rem == 0, do: validity, else: <<validity::bitstring, 0::size(8 - bit_rem)>>
 
+    # Arrow validity bitmaps are strictly LSB-first (bit 0 = slot 0, bit 7 = slot 7)
+    lsb_bitmap = msb_to_lsb_bitmap(byte_padded)
+
     if pad_to_8? do
-      pad_binary_to_8(byte_padded)
+      pad_binary_to_8(lsb_bitmap)
     else
-      byte_padded
+      lsb_bitmap
     end
+  end
+
+  defp msb_to_lsb_bitmap(bin), do: do_msb_to_lsb(bin, <<>>)
+
+  defp do_msb_to_lsb(<<>>, acc), do: acc
+
+  defp do_msb_to_lsb(
+         <<b0::1, b1::1, b2::1, b3::1, b4::1, b5::1, b6::1, b7::1, rest::binary>>,
+         acc
+       ) do
+    do_msb_to_lsb(
+      rest,
+      <<acc::binary, b7::1, b6::1, b5::1, b4::1, b3::1, b2::1, b1::1, b0::1>>
+    )
   end
 
   defp pad_binary_to_8(bin) when is_binary(bin) do

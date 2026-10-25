@@ -762,33 +762,140 @@ defmodule Errow.Numeric do
   defp do_product(<<x::64-little-float, rest::binary>>, :f64, acc),
     do: do_product(rest, :f64, acc * x)
 
-  # do_min / do_max / do_min_max
+  # do_min
   defp do_min(<<>>, _type, acc), do: acc
 
-  defp do_min(data, type, acc) do
-    size = byte_size_for_type(type)
-    <<chunk::binary-size(^size), rest::binary>> = data
-    val = decode_value(chunk, type)
-    do_min(rest, type, Kernel.min(acc, val))
-  end
+  defp do_min(<<x::8-little-signed, rest::binary>>, :s8, acc),
+    do: do_min(rest, :s8, Kernel.min(acc, x))
 
+  defp do_min(<<x::8-little-unsigned, rest::binary>>, :u8, acc),
+    do: do_min(rest, :u8, Kernel.min(acc, x))
+
+  defp do_min(<<x::16-little-signed, rest::binary>>, :s16, acc),
+    do: do_min(rest, :s16, Kernel.min(acc, x))
+
+  defp do_min(<<x::16-little-unsigned, rest::binary>>, :u16, acc),
+    do: do_min(rest, :u16, Kernel.min(acc, x))
+
+  defp do_min(<<x::32-little-signed, rest::binary>>, :s32, acc),
+    do: do_min(rest, :s32, Kernel.min(acc, x))
+
+  defp do_min(<<x::32-little-unsigned, rest::binary>>, :u32, acc),
+    do: do_min(rest, :u32, Kernel.min(acc, x))
+
+  defp do_min(<<x::64-little-signed, rest::binary>>, :s64, acc),
+    do: do_min(rest, :s64, Kernel.min(acc, x))
+
+  defp do_min(<<x::64-little-unsigned, rest::binary>>, :u64, acc),
+    do: do_min(rest, :u64, Kernel.min(acc, x))
+
+  defp do_min(<<x::128-little-signed, rest::binary>>, :s128, acc),
+    do: do_min(rest, :s128, Kernel.min(acc, x))
+
+  defp do_min(<<x::128-little-unsigned, rest::binary>>, :u128, acc),
+    do: do_min(rest, :u128, Kernel.min(acc, x))
+
+  defp do_min(<<x::256-little-signed, rest::binary>>, :s256, acc),
+    do: do_min(rest, :s256, Kernel.min(acc, x))
+
+  defp do_min(<<x::256-little-unsigned, rest::binary>>, :u256, acc),
+    do: do_min(rest, :u256, Kernel.min(acc, x))
+
+  defp do_min(<<x::32-little-float, rest::binary>>, :f32, acc),
+    do: do_min(rest, :f32, Kernel.min(acc, x))
+
+  defp do_min(<<x::64-little-float, rest::binary>>, :f64, acc),
+    do: do_min(rest, :f64, Kernel.min(acc, x))
+
+  # do_max
   defp do_max(<<>>, _type, acc), do: acc
 
-  defp do_max(data, type, acc) do
-    size = byte_size_for_type(type)
-    <<chunk::binary-size(^size), rest::binary>> = data
-    val = decode_value(chunk, type)
-    do_max(rest, type, Kernel.max(acc, val))
-  end
+  defp do_max(<<x::8-little-signed, rest::binary>>, :s8, acc),
+    do: do_max(rest, :s8, Kernel.max(acc, x))
 
+  defp do_max(<<x::8-little-unsigned, rest::binary>>, :u8, acc),
+    do: do_max(rest, :u8, Kernel.max(acc, x))
+
+  defp do_max(<<x::16-little-signed, rest::binary>>, :s16, acc),
+    do: do_max(rest, :s16, Kernel.max(acc, x))
+
+  defp do_max(<<x::16-little-unsigned, rest::binary>>, :u16, acc),
+    do: do_max(rest, :u16, Kernel.max(acc, x))
+
+  defp do_max(<<x::32-little-signed, rest::binary>>, :s32, acc),
+    do: do_max(rest, :s32, Kernel.max(acc, x))
+
+  defp do_max(<<x::32-little-unsigned, rest::binary>>, :u32, acc),
+    do: do_max(rest, :u32, Kernel.max(acc, x))
+
+  defp do_max(<<x::64-little-signed, rest::binary>>, :s64, acc),
+    do: do_max(rest, :s64, Kernel.max(acc, x))
+
+  defp do_max(<<x::64-little-unsigned, rest::binary>>, :u64, acc),
+    do: do_max(rest, :u64, Kernel.max(acc, x))
+
+  defp do_max(<<x::128-little-signed, rest::binary>>, :s128, acc),
+    do: do_max(rest, :s128, Kernel.max(acc, x))
+
+  defp do_max(<<x::128-little-unsigned, rest::binary>>, :u128, acc),
+    do: do_max(rest, :u128, Kernel.max(acc, x))
+
+  defp do_max(<<x::256-little-signed, rest::binary>>, :s256, acc),
+    do: do_max(rest, :s256, Kernel.max(acc, x))
+
+  defp do_max(<<x::256-little-unsigned, rest::binary>>, :u256, acc),
+    do: do_max(rest, :u256, Kernel.max(acc, x))
+
+  defp do_max(<<x::32-little-float, rest::binary>>, :f32, acc),
+    do: do_max(rest, :f32, Kernel.max(acc, x))
+
+  defp do_max(<<x::64-little-float, rest::binary>>, :f64, acc),
+    do: do_max(rest, :f64, Kernel.max(acc, x))
+
+  # do_min_max
   defp do_min_max(<<>>, _type, min_acc, max_acc), do: {min_acc, max_acc}
 
-  defp do_min_max(data, type, min_acc, max_acc) do
-    size = byte_size_for_type(type)
-    <<chunk::binary-size(^size), rest::binary>> = data
-    val = decode_value(chunk, type)
-    do_min_max(rest, type, Kernel.min(min_acc, val), Kernel.max(max_acc, val))
-  end
+  defp do_min_max(<<x::8-little-signed, rest::binary>>, :s8, min_a, max_a),
+    do: do_min_max(rest, :s8, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::8-little-unsigned, rest::binary>>, :u8, min_a, max_a),
+    do: do_min_max(rest, :u8, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::16-little-signed, rest::binary>>, :s16, min_a, max_a),
+    do: do_min_max(rest, :s16, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::16-little-unsigned, rest::binary>>, :u16, min_a, max_a),
+    do: do_min_max(rest, :u16, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::32-little-signed, rest::binary>>, :s32, min_a, max_a),
+    do: do_min_max(rest, :s32, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::32-little-unsigned, rest::binary>>, :u32, min_a, max_a),
+    do: do_min_max(rest, :u32, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::64-little-signed, rest::binary>>, :s64, min_a, max_a),
+    do: do_min_max(rest, :s64, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::64-little-unsigned, rest::binary>>, :u64, min_a, max_a),
+    do: do_min_max(rest, :u64, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::128-little-signed, rest::binary>>, :s128, min_a, max_a),
+    do: do_min_max(rest, :s128, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::128-little-unsigned, rest::binary>>, :u128, min_a, max_a),
+    do: do_min_max(rest, :u128, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::256-little-signed, rest::binary>>, :s256, min_a, max_a),
+    do: do_min_max(rest, :s256, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::256-little-unsigned, rest::binary>>, :u256, min_a, max_a),
+    do: do_min_max(rest, :u256, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::32-little-float, rest::binary>>, :f32, min_a, max_a),
+    do: do_min_max(rest, :f32, Kernel.min(min_a, x), Kernel.max(max_a, x))
+
+  defp do_min_max(<<x::64-little-float, rest::binary>>, :f64, min_a, max_a),
+    do: do_min_max(rest, :f64, Kernel.min(min_a, x), Kernel.max(max_a, x))
 end
 
 # ==============================================================================

@@ -149,6 +149,34 @@ static ERL_NIF_TERM get_string_len(ErlNifEnv* env, int argc, const ERL_NIF_TERM 
 }
 ```
 
+### Consuming in Python (`pyarrow`):
+
+```python
+import pyarrow as pa
+
+# Zero-copy wrap BEAM binary buffers exported by Errow.CData.export_buffers/2:
+buf_offsets = pa.py_buffer(offsets_bytes)
+buf_data = pa.py_buffer(data_bytes)
+buf_validity = pa.py_buffer(validity_bytes) if validity_bytes else None
+
+arrow_array = pa.Array.from_buffers(
+    pa.string(),
+    length,
+    [buf_validity, buf_offsets, buf_data],
+    null_count=null_count
+)
+```
+
+---
+
+## Testing & Specification Compliance
+
+Errow is verified against official Apache Arrow test fixtures from [`apache/arrow-testing`](https://github.com/apache/arrow-testing):
+* **Columnar IPC Files (`.arrow`)**: Verified against official `generated_primitive.arrow`, `generated_decimal.arrow`, and `generated_decimal256.arrow` with `"ARROW1"` magic encapsulation and FlatBuffers footers.
+* **IPC Streams (`.stream`)**: Conforms to official Arrow IPC framing and 8-byte buffer alignment.
+* **LSB-First Validity Bitmaps**: Exports null bitmaps matching the Arrow specification (bit 0 = slot 0, bit 1 = slot 1).
+* **Cross-Language Integration**: End-to-end integration tests confirm that `pyarrow` directly reconstructs Errow arrays with zero deserialization errors.
+
 ---
 
 ## License

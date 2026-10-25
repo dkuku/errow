@@ -137,4 +137,27 @@ defmodule ErrowStringTest do
       assert inspected =~ ~s("beam")
     end
   end
+
+  describe "String Aggregations" do
+    test "join/2 with and without nulls" do
+      arr = Errow.string(["Hello", "World", "BEAM"])
+      assert Errow.join(arr, " ") == "Hello World BEAM"
+      assert Errow.join(arr, "") == "HelloWorldBEAM"
+
+      with_nulls = Errow.string(["A", nil, "B"])
+      assert Errow.join(with_nulls, "-") == "A-B"
+      assert Errow.join(with_nulls, "-", skip_nulls: false) == "A--B"
+    end
+
+    test "min/2 and max/2 lexicographical" do
+      arr = Errow.string(["banana", "apple", "cherry"])
+      assert Errow.min(arr) == "apple"
+      assert Errow.max(arr) == "cherry"
+    end
+
+    test "total_bytes/1" do
+      arr = Errow.string(["abc", "de"])
+      assert Errow.String.total_bytes(arr) == 5
+    end
+  end
 end

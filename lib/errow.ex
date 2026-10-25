@@ -41,6 +41,8 @@ defmodule Errow do
       iex> %{buffers: [_validity, _offsets, _data]} = Errow.CData.export_buffers(arr)
   """
 
+  import Kernel, except: [min: 2, max: 2]
+
   @doc """
   Creates a new empty `Errow.String` array.
   """
@@ -70,4 +72,47 @@ defmodule Errow do
   Builds an `Errow.Numeric` array from an enumerable of numbers and optional `nil`s.
   """
   defdelegate numeric(enumerable, type), to: Errow.Numeric, as: :from_list
+
+  # ============================================================================
+  # Aggregations
+  # ============================================================================
+
+  @doc """
+  Calculates the sum of elements in a numeric array.
+  """
+  defdelegate sum(arr, opts \\ []), to: Errow.Numeric
+
+  @doc """
+  Calculates the product of elements in a numeric array.
+  """
+  defdelegate product(arr, opts \\ []), to: Errow.Numeric
+
+  @doc """
+  Calculates the arithmetic mean of elements in a numeric array.
+  """
+  defdelegate mean(arr, opts \\ []), to: Errow.Numeric
+
+  @doc """
+  Returns `{min, max}` in a single pass.
+  """
+  def min_max(%Errow.Numeric{} = arr, opts \\ []), do: Errow.Numeric.min_max(arr, opts)
+
+  @doc """
+  Returns the minimum value in a numeric or string array.
+  """
+  def min(%Errow.Numeric{} = arr, opts), do: Errow.Numeric.min(arr, opts)
+  def min(%Errow.String{} = arr, opts), do: Errow.String.min(arr, opts)
+  def min(arr), do: min(arr, [])
+
+  @doc """
+  Returns the maximum value in a numeric or string array.
+  """
+  def max(%Errow.Numeric{} = arr, opts), do: Errow.Numeric.max(arr, opts)
+  def max(%Errow.String{} = arr, opts), do: Errow.String.max(arr, opts)
+  def max(arr), do: max(arr, [])
+
+  @doc """
+  Joins string elements with the given separator.
+  """
+  defdelegate join(arr, separator \\ "", opts \\ []), to: Errow.String
 end

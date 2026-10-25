@@ -114,4 +114,48 @@ defmodule ErrowNumericTest do
       assert inspect(num) =~ "#Errow.Numeric<s32, ["
     end
   end
+
+  describe "Native Aggregations" do
+    test "sum/2 with ints and floats" do
+      ints = Errow.numeric([10, 20, 30, 40], :s32)
+      assert Errow.sum(ints) == 100
+
+      floats = Errow.numeric([1.5, 2.5, 3.5], :f64)
+      assert Errow.sum(floats) == 7.5
+
+      # with nulls
+      with_nulls = Errow.numeric([10, nil, 30], :s32)
+      assert Errow.sum(with_nulls) == 40
+      assert Errow.sum(with_nulls, skip_nulls: false) == nil
+    end
+
+    test "product/2" do
+      ints = Errow.numeric([2, 3, 4], :s32)
+      assert Errow.product(ints) == 24
+
+      with_nulls = Errow.numeric([2, nil, 5], :s32)
+      assert Errow.product(with_nulls) == 10
+    end
+
+    test "min/2, max/2, min_max/2" do
+      num = Errow.numeric([15, 3, 99, -5, 42], :s32)
+      assert Errow.min(num) == -5
+      assert Errow.max(num) == 99
+      assert Errow.min_max(num) == {-5, 99}
+
+      # with nulls
+      with_nulls = Errow.numeric([nil, 15, -2, nil, 50], :s32)
+      assert Errow.min(with_nulls) == -2
+      assert Errow.max(with_nulls) == 50
+      assert Errow.min_max(with_nulls) == {-2, 50}
+    end
+
+    test "mean/2" do
+      num = Errow.numeric([10, 20, 30], :s32)
+      assert Errow.mean(num) == 20.0
+
+      with_nulls = Errow.numeric([10, nil, 20], :s32)
+      assert Errow.mean(with_nulls) == 15.0
+    end
+  end
 end

@@ -205,6 +205,99 @@ defmodule Errow.String do
   end
 
   # ============================================================================
+  # String Aggregations
+  # ============================================================================
+
+  @doc """
+  Joins the strings in the array with the given separator.
+  Null values are skipped by default.
+  """
+  @spec join(t(), binary(), keyword()) :: binary()
+  def join(arr, separator \\ "", opts \\ [])
+  def join(%__MODULE__{length: 0}, _separator, _opts), do: ""
+
+  def join(%__MODULE__{null_count: 0, data: data}, "", _opts) do
+    # Zero-cost join: when separator is empty and no nulls, the data binary IS the joined string!
+    data
+  end
+
+  def join(%__MODULE__{null_count: 0, offsets: offsets, data: data, length: len}, separator, _opts) do
+    items =
+      for i <- 0..(len - 1)//1 do
+        <<_::binary-size(^i * 4), start::32-little, stop::32-little, _::binary>> = offsets
+        binary_part(data, start, stop - start)
+      end
+
+    Enum.join(items, separator)
+  end
+
+  def join(%__MODULE__{length: len} = arr, separator, opts) do
+    skip_nulls? = Keyword.get(opts, :skip_nulls, true)
+
+    items =
+      0..(len - 1)//1
+      |> Enum.map(fn i ->
+        case get(arr, i) do
+          nil -> if skip_nulls?, do: :skip, else: ""
+          str -> str
+        end
+      end)
+      |> Enum.reject(&(&1 == :skip))
+
+    Enum.join(items, separator)
+  end
+
+  @doc """
+  Finds the lexicographically smallest string in the array.
+  """
+  @spec min(t(), keyword()) :: binary() | nil
+  def min(arr, opts \\ [])
+  def min(%__MODULE__{length: 0}, _opts), do: nil
+
+  def min(%__MODULE__{length: len} = arr, opts) do
+    skip_nulls? = Keyword.get(opts, :skip_nulls, true)
+
+    Enum.reduce(0..(len - 1)//1, nil, fn idx, acc ->
+      val = get(arr, idx)
+
+      cond do
+        is_nil(val) and skip_nulls? -> acc
+        is_nil(acc) -> val
+        is_nil(val) -> acc
+        true -> Kernel.min(acc, val)
+      end
+    end)
+  end
+
+  @doc """
+  Finds the lexicographically largest string in the array.
+  """
+  @spec max(t(), keyword()) :: binary() | nil
+  def max(arr, opts \\ [])
+  def max(%__MODULE__{length: 0}, _opts), do: nil
+
+  def max(%__MODULE__{length: len} = arr, opts) do
+    skip_nulls? = Keyword.get(opts, :skip_nulls, true)
+
+    Enum.reduce(0..(len - 1)//1, nil, fn idx, acc ->
+      val = get(arr, idx)
+
+      cond do
+        is_nil(val) and skip_nulls? -> acc
+        is_nil(acc) -> val
+        is_nil(val) -> acc
+        true -> Kernel.max(acc, val)
+      end
+    end)
+  end
+
+  @doc """
+  Returns the sum of byte lengths of all strings in the array.
+  """
+  @spec total_bytes(t()) :: non_neg_integer()
+  def total_bytes(%__MODULE__{data: data}), do: byte_size(data)
+
+  # ============================================================================
   # Access Behaviour
   # ============================================================================
 

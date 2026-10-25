@@ -250,6 +250,151 @@ defmodule Errow.Numeric do
   end
 
   # ============================================================================
+  # Aggregations (Native zero-overhead continuous binary reduction)
+  # ============================================================================
+
+  @doc """
+  Calculates the sum of elements in the array.
+  Options:
+    * `:skip_nulls` - boolean, defaults to `true`.
+  """
+  @spec sum(t(), keyword()) :: number() | nil
+  def sum(arr, opts \\ [])
+  def sum(%__MODULE__{length: 0}, _opts), do: 0
+
+  def sum(%__MODULE__{null_count: count} = arr, opts) when count > 0 do
+    if Keyword.get(opts, :skip_nulls, true) do
+      reduce_with_validity(arr, 0, fn val, acc -> acc + val end)
+    else
+      nil
+    end
+  end
+
+  def sum(%__MODULE__{data: data, type: type}, _opts) do
+    do_sum(data, type, 0)
+  end
+
+  @doc """
+  Calculates the product of elements in the array.
+  Options:
+    * `:skip_nulls` - boolean, defaults to `true`.
+  """
+  @spec product(t(), keyword()) :: number() | nil
+  def product(arr, opts \\ [])
+  def product(%__MODULE__{length: 0}, _opts), do: 1
+
+  def product(%__MODULE__{null_count: count} = arr, opts) when count > 0 do
+    if Keyword.get(opts, :skip_nulls, true) do
+      reduce_with_validity(arr, 1, fn val, acc -> acc * val end)
+    else
+      nil
+    end
+  end
+
+  def product(%__MODULE__{data: data, type: type}, _opts) do
+    do_product(data, type, 1)
+  end
+
+  @doc """
+  Finds the minimum value in the array.
+  """
+  @spec min(t(), keyword()) :: number() | nil
+  def min(arr, opts \\ [])
+  def min(%__MODULE__{length: 0}, _opts), do: nil
+
+  def min(%__MODULE__{null_count: count} = arr, opts) when count > 0 do
+    if Keyword.get(opts, :skip_nulls, true) do
+      case reduce_with_validity(arr, :none, fn val, acc ->
+             if acc == :none, do: val, else: Kernel.min(acc, val)
+           end) do
+        :none -> nil
+        res -> res
+      end
+    else
+      nil
+    end
+  end
+
+  def min(%__MODULE__{data: data, type: type, item_size: size}, _opts) do
+    <<first_chunk::binary-size(^size), rest::binary>> = data
+    first_val = decode_value(first_chunk, type)
+    do_min(rest, type, first_val)
+  end
+
+  @doc """
+  Finds the maximum value in the array.
+  """
+  @spec max(t(), keyword()) :: number() | nil
+  def max(arr, opts \\ [])
+  def max(%__MODULE__{length: 0}, _opts), do: nil
+
+  def max(%__MODULE__{null_count: count} = arr, opts) when count > 0 do
+    if Keyword.get(opts, :skip_nulls, true) do
+      case reduce_with_validity(arr, :none, fn val, acc ->
+             if acc == :none, do: val, else: Kernel.max(acc, val)
+           end) do
+        :none -> nil
+        res -> res
+      end
+    else
+      nil
+    end
+  end
+
+  def max(%__MODULE__{data: data, type: type, item_size: size}, _opts) do
+    <<first_chunk::binary-size(^size), rest::binary>> = data
+    first_val = decode_value(first_chunk, type)
+    do_max(rest, type, first_val)
+  end
+
+  @doc """
+  Returns a `{min, max}` tuple in a single pass over the array.
+  """
+  @spec min_max(t(), keyword()) :: {number(), number()} | nil
+  def min_max(arr, opts \\ [])
+  def min_max(%__MODULE__{length: 0}, _opts), do: nil
+
+  def min_max(%__MODULE__{null_count: count} = arr, opts) when count > 0 do
+    if Keyword.get(opts, :skip_nulls, true) do
+      case reduce_with_validity(arr, :none, fn val, acc ->
+             case acc do
+               :none -> {val, val}
+               {min_v, max_v} -> {Kernel.min(min_v, val), Kernel.max(max_v, val)}
+             end
+           end) do
+        :none -> nil
+        res -> res
+      end
+    else
+      nil
+    end
+  end
+
+  def min_max(%__MODULE__{data: data, type: type, item_size: size}, _opts) do
+    <<first_chunk::binary-size(^size), rest::binary>> = data
+    first_val = decode_value(first_chunk, type)
+    do_min_max(rest, type, first_val, first_val)
+  end
+
+  @doc """
+  Calculates the arithmetic mean (average) of the elements as a float.
+  """
+  @spec mean(t(), keyword()) :: float() | nil
+  def mean(arr, opts \\ [])
+  def mean(%__MODULE__{length: 0}, _opts), do: nil
+
+  def mean(%__MODULE__{length: len, null_count: nulls} = arr, opts) do
+    valid_count = len - nulls
+
+    if valid_count > 0 do
+      sum_val = sum(arr, opts)
+      if is_nil(sum_val), do: nil, else: sum_val / valid_count
+    else
+      nil
+    end
+  end
+
+  # ============================================================================
   # Access Behaviour
   # ============================================================================
 
@@ -436,6 +581,115 @@ defmodule Errow.Numeric do
   defp decode_value(<<val::256-little-unsigned>>, :u256), do: val
   defp decode_value(<<val::32-little-float>>, :f32), do: val
   defp decode_value(<<val::64-little-float>>, :f64), do: val
+
+  # Aggregation loops
+  defp reduce_with_validity(
+         %__MODULE__{
+           data: data,
+           validity: validity,
+           type: type,
+           item_size: size,
+           length: len
+         },
+         initial,
+         fun
+       ) do
+    do_reduce_validity(validity, data, type, size, 0, len, initial, fun)
+  end
+
+  defp do_reduce_validity(_validity, _data, _type, _size, idx, len, acc, _fun) when idx >= len,
+    do: acc
+
+  defp do_reduce_validity(
+         <<0::1, val_rest::bitstring>>,
+         data,
+         type,
+         size,
+         idx,
+         len,
+         acc,
+         fun
+       ) do
+    <<_chunk::binary-size(^size), data_rest::binary>> = data
+    do_reduce_validity(val_rest, data_rest, type, size, idx + 1, len, acc, fun)
+  end
+
+  defp do_reduce_validity(
+         <<1::1, val_rest::bitstring>>,
+         data,
+         type,
+         size,
+         idx,
+         len,
+         acc,
+         fun
+       ) do
+    <<chunk::binary-size(^size), data_rest::binary>> = data
+    val = decode_value(chunk, type)
+    do_reduce_validity(val_rest, data_rest, type, size, idx + 1, len, fun.(val, acc), fun)
+  end
+
+  # do_sum
+  defp do_sum(<<>>, _type, acc), do: acc
+  defp do_sum(<<x::8-little-signed, rest::binary>>, :s8, acc), do: do_sum(rest, :s8, acc + x)
+  defp do_sum(<<x::8-little-unsigned, rest::binary>>, :u8, acc), do: do_sum(rest, :u8, acc + x)
+  defp do_sum(<<x::16-little-signed, rest::binary>>, :s16, acc), do: do_sum(rest, :s16, acc + x)
+  defp do_sum(<<x::16-little-unsigned, rest::binary>>, :u16, acc), do: do_sum(rest, :u16, acc + x)
+  defp do_sum(<<x::32-little-signed, rest::binary>>, :s32, acc), do: do_sum(rest, :s32, acc + x)
+  defp do_sum(<<x::32-little-unsigned, rest::binary>>, :u32, acc), do: do_sum(rest, :u32, acc + x)
+  defp do_sum(<<x::64-little-signed, rest::binary>>, :s64, acc), do: do_sum(rest, :s64, acc + x)
+  defp do_sum(<<x::64-little-unsigned, rest::binary>>, :u64, acc), do: do_sum(rest, :u64, acc + x)
+  defp do_sum(<<x::128-little-signed, rest::binary>>, :s128, acc), do: do_sum(rest, :s128, acc + x)
+  defp do_sum(<<x::128-little-unsigned, rest::binary>>, :u128, acc), do: do_sum(rest, :u128, acc + x)
+  defp do_sum(<<x::256-little-signed, rest::binary>>, :s256, acc), do: do_sum(rest, :s256, acc + x)
+  defp do_sum(<<x::256-little-unsigned, rest::binary>>, :u256, acc), do: do_sum(rest, :u256, acc + x)
+  defp do_sum(<<x::32-little-float, rest::binary>>, :f32, acc), do: do_sum(rest, :f32, acc + x)
+  defp do_sum(<<x::64-little-float, rest::binary>>, :f64, acc), do: do_sum(rest, :f64, acc + x)
+
+  # do_product
+  defp do_product(<<>>, _type, acc), do: acc
+  defp do_product(<<x::8-little-signed, rest::binary>>, :s8, acc), do: do_product(rest, :s8, acc * x)
+  defp do_product(<<x::8-little-unsigned, rest::binary>>, :u8, acc), do: do_product(rest, :u8, acc * x)
+  defp do_product(<<x::16-little-signed, rest::binary>>, :s16, acc), do: do_product(rest, :s16, acc * x)
+  defp do_product(<<x::16-little-unsigned, rest::binary>>, :u16, acc), do: do_product(rest, :u16, acc * x)
+  defp do_product(<<x::32-little-signed, rest::binary>>, :s32, acc), do: do_product(rest, :s32, acc * x)
+  defp do_product(<<x::32-little-unsigned, rest::binary>>, :u32, acc), do: do_product(rest, :u32, acc * x)
+  defp do_product(<<x::64-little-signed, rest::binary>>, :s64, acc), do: do_product(rest, :s64, acc * x)
+  defp do_product(<<x::64-little-unsigned, rest::binary>>, :u64, acc), do: do_product(rest, :u64, acc * x)
+  defp do_product(<<x::128-little-signed, rest::binary>>, :s128, acc), do: do_product(rest, :s128, acc * x)
+  defp do_product(<<x::128-little-unsigned, rest::binary>>, :u128, acc), do: do_product(rest, :u128, acc * x)
+  defp do_product(<<x::256-little-signed, rest::binary>>, :s256, acc), do: do_product(rest, :s256, acc * x)
+  defp do_product(<<x::256-little-unsigned, rest::binary>>, :u256, acc), do: do_product(rest, :u256, acc * x)
+  defp do_product(<<x::32-little-float, rest::binary>>, :f32, acc), do: do_product(rest, :f32, acc * x)
+  defp do_product(<<x::64-little-float, rest::binary>>, :f64, acc), do: do_product(rest, :f64, acc * x)
+
+  # do_min / do_max / do_min_max
+  defp do_min(<<>>, _type, acc), do: acc
+
+  defp do_min(data, type, acc) do
+    size = byte_size_for_type(type)
+    <<chunk::binary-size(^size), rest::binary>> = data
+    val = decode_value(chunk, type)
+    do_min(rest, type, Kernel.min(acc, val))
+  end
+
+  defp do_max(<<>>, _type, acc), do: acc
+
+  defp do_max(data, type, acc) do
+    size = byte_size_for_type(type)
+    <<chunk::binary-size(^size), rest::binary>> = data
+    val = decode_value(chunk, type)
+    do_max(rest, type, Kernel.max(acc, val))
+  end
+
+  defp do_min_max(<<>>, _type, min_acc, max_acc), do: {min_acc, max_acc}
+
+  defp do_min_max(data, type, min_acc, max_acc) do
+    size = byte_size_for_type(type)
+    <<chunk::binary-size(^size), rest::binary>> = data
+    val = decode_value(chunk, type)
+    do_min_max(rest, type, Kernel.min(min_acc, val), Kernel.max(max_acc, val))
+  end
 end
 
 # ==============================================================================

@@ -522,46 +522,108 @@ defmodule Errow.Numeric do
   defp byte_size_for_type(:f32), do: 4
   defp byte_size_for_type(:f64), do: 8
 
-  # Encoding
-  defp encode_value(val, :s8) when val >= -128 and val <= 127, do: <<val::8-little-signed>>
-  defp encode_value(val, :u8) when val >= 0 and val <= 255, do: <<val::8-little-unsigned>>
-  defp encode_value(val, :s16) when val >= -32768 and val <= 32767, do: <<val::16-little-signed>>
-  defp encode_value(val, :u16) when val >= 0 and val <= 65535, do: <<val::16-little-unsigned>>
+  # Encoders
+  @doc false
+  def encoder_for(:s8), do: fn val when val >= -128 and val <= 127 -> <<val::8-little-signed>> end
+  def encoder_for(:u8), do: fn val when val >= 0 and val <= 255 -> <<val::8-little-unsigned>> end
 
-  defp encode_value(val, :s32) when val >= -2_147_483_648 and val <= 2_147_483_647,
+  def encoder_for(:s16),
+    do: fn val when val >= -32768 and val <= 32767 -> <<val::16-little-signed>> end
+
+  def encoder_for(:u16),
+    do: fn val when val >= 0 and val <= 65535 -> <<val::16-little-unsigned>> end
+
+  def encoder_for(:s32),
+    do: fn val when val >= -2_147_483_648 and val <= 2_147_483_647 ->
+      <<val::32-little-signed>>
+    end
+
+  def encoder_for(:u32),
+    do: fn val when val >= 0 and val <= 4_294_967_295 -> <<val::32-little-unsigned>> end
+
+  def encoder_for(:s64),
+    do: fn
+      val when val >= -9_223_372_036_854_775_808 and val <= 9_223_372_036_854_775_807 ->
+        <<val::64-little-signed>>
+    end
+
+  def encoder_for(:u64),
+    do: fn val when val >= 0 and val <= 18_446_744_073_709_551_615 ->
+      <<val::64-little-unsigned>>
+    end
+
+  def encoder_for(:s128),
+    do: fn
+      val
+      when val >= -0x80000000000000000000000000000000 and
+             val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ->
+        <<val::128-little-signed>>
+    end
+
+  def encoder_for(:u128),
+    do: fn val when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ->
+      <<val::128-little-unsigned>>
+    end
+
+  def encoder_for(:s256),
+    do: fn
+      val
+      when val >= -0x8000000000000000000000000000000000000000000000000000000000000000 and
+             val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ->
+        <<val::256-little-signed>>
+    end
+
+  def encoder_for(:u256),
+    do: fn
+      val
+      when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ->
+        <<val::256-little-unsigned>>
+    end
+
+  def encoder_for(:f32), do: fn val -> <<:erlang.float(val)::32-little-float>> end
+  def encoder_for(:f64), do: fn val -> <<:erlang.float(val)::64-little-float>> end
+
+  # Encoding
+  @doc false
+  def encode_value(val, :s8) when val >= -128 and val <= 127, do: <<val::8-little-signed>>
+  def encode_value(val, :u8) when val >= 0 and val <= 255, do: <<val::8-little-unsigned>>
+  def encode_value(val, :s16) when val >= -32768 and val <= 32767, do: <<val::16-little-signed>>
+  def encode_value(val, :u16) when val >= 0 and val <= 65535, do: <<val::16-little-unsigned>>
+
+  def encode_value(val, :s32) when val >= -2_147_483_648 and val <= 2_147_483_647,
     do: <<val::32-little-signed>>
 
-  defp encode_value(val, :u32) when val >= 0 and val <= 4_294_967_295,
+  def encode_value(val, :u32) when val >= 0 and val <= 4_294_967_295,
     do: <<val::32-little-unsigned>>
 
-  defp encode_value(val, :s64)
-       when val >= -9_223_372_036_854_775_808 and val <= 9_223_372_036_854_775_807,
-       do: <<val::64-little-signed>>
+  def encode_value(val, :s64)
+      when val >= -9_223_372_036_854_775_808 and val <= 9_223_372_036_854_775_807,
+      do: <<val::64-little-signed>>
 
-  defp encode_value(val, :u64) when val >= 0 and val <= 18_446_744_073_709_551_615,
+  def encode_value(val, :u64) when val >= 0 and val <= 18_446_744_073_709_551_615,
     do: <<val::64-little-unsigned>>
 
-  defp encode_value(val, :s128)
-       when val >= -0x80000000000000000000000000000000 and
-              val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-       do: <<val::128-little-signed>>
+  def encode_value(val, :s128)
+      when val >= -0x80000000000000000000000000000000 and
+             val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+      do: <<val::128-little-signed>>
 
-  defp encode_value(val, :u128) when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+  def encode_value(val, :u128) when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
     do: <<val::128-little-unsigned>>
 
-  defp encode_value(val, :s256)
-       when val >= -0x8000000000000000000000000000000000000000000000000000000000000000 and
-              val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-       do: <<val::256-little-signed>>
+  def encode_value(val, :s256)
+      when val >= -0x8000000000000000000000000000000000000000000000000000000000000000 and
+             val <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+      do: <<val::256-little-signed>>
 
-  defp encode_value(val, :u256)
-       when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-       do: <<val::256-little-unsigned>>
+  def encode_value(val, :u256)
+      when val >= 0 and val <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+      do: <<val::256-little-unsigned>>
 
-  defp encode_value(val, :f32), do: <<:erlang.float(val)::32-little-float>>
-  defp encode_value(val, :f64), do: <<:erlang.float(val)::64-little-float>>
+  def encode_value(val, :f32), do: <<:erlang.float(val)::32-little-float>>
+  def encode_value(val, :f64), do: <<:erlang.float(val)::64-little-float>>
 
-  defp encode_value(val, type) do
+  def encode_value(val, type) do
     raise ArgumentError,
           "value #{inspect(val)} is invalid or out of bounds for numeric type #{inspect(type)}"
   end
@@ -639,29 +701,66 @@ defmodule Errow.Numeric do
   defp do_sum(<<x::32-little-unsigned, rest::binary>>, :u32, acc), do: do_sum(rest, :u32, acc + x)
   defp do_sum(<<x::64-little-signed, rest::binary>>, :s64, acc), do: do_sum(rest, :s64, acc + x)
   defp do_sum(<<x::64-little-unsigned, rest::binary>>, :u64, acc), do: do_sum(rest, :u64, acc + x)
-  defp do_sum(<<x::128-little-signed, rest::binary>>, :s128, acc), do: do_sum(rest, :s128, acc + x)
-  defp do_sum(<<x::128-little-unsigned, rest::binary>>, :u128, acc), do: do_sum(rest, :u128, acc + x)
-  defp do_sum(<<x::256-little-signed, rest::binary>>, :s256, acc), do: do_sum(rest, :s256, acc + x)
-  defp do_sum(<<x::256-little-unsigned, rest::binary>>, :u256, acc), do: do_sum(rest, :u256, acc + x)
+
+  defp do_sum(<<x::128-little-signed, rest::binary>>, :s128, acc),
+    do: do_sum(rest, :s128, acc + x)
+
+  defp do_sum(<<x::128-little-unsigned, rest::binary>>, :u128, acc),
+    do: do_sum(rest, :u128, acc + x)
+
+  defp do_sum(<<x::256-little-signed, rest::binary>>, :s256, acc),
+    do: do_sum(rest, :s256, acc + x)
+
+  defp do_sum(<<x::256-little-unsigned, rest::binary>>, :u256, acc),
+    do: do_sum(rest, :u256, acc + x)
+
   defp do_sum(<<x::32-little-float, rest::binary>>, :f32, acc), do: do_sum(rest, :f32, acc + x)
   defp do_sum(<<x::64-little-float, rest::binary>>, :f64, acc), do: do_sum(rest, :f64, acc + x)
 
   # do_product
   defp do_product(<<>>, _type, acc), do: acc
-  defp do_product(<<x::8-little-signed, rest::binary>>, :s8, acc), do: do_product(rest, :s8, acc * x)
-  defp do_product(<<x::8-little-unsigned, rest::binary>>, :u8, acc), do: do_product(rest, :u8, acc * x)
-  defp do_product(<<x::16-little-signed, rest::binary>>, :s16, acc), do: do_product(rest, :s16, acc * x)
-  defp do_product(<<x::16-little-unsigned, rest::binary>>, :u16, acc), do: do_product(rest, :u16, acc * x)
-  defp do_product(<<x::32-little-signed, rest::binary>>, :s32, acc), do: do_product(rest, :s32, acc * x)
-  defp do_product(<<x::32-little-unsigned, rest::binary>>, :u32, acc), do: do_product(rest, :u32, acc * x)
-  defp do_product(<<x::64-little-signed, rest::binary>>, :s64, acc), do: do_product(rest, :s64, acc * x)
-  defp do_product(<<x::64-little-unsigned, rest::binary>>, :u64, acc), do: do_product(rest, :u64, acc * x)
-  defp do_product(<<x::128-little-signed, rest::binary>>, :s128, acc), do: do_product(rest, :s128, acc * x)
-  defp do_product(<<x::128-little-unsigned, rest::binary>>, :u128, acc), do: do_product(rest, :u128, acc * x)
-  defp do_product(<<x::256-little-signed, rest::binary>>, :s256, acc), do: do_product(rest, :s256, acc * x)
-  defp do_product(<<x::256-little-unsigned, rest::binary>>, :u256, acc), do: do_product(rest, :u256, acc * x)
-  defp do_product(<<x::32-little-float, rest::binary>>, :f32, acc), do: do_product(rest, :f32, acc * x)
-  defp do_product(<<x::64-little-float, rest::binary>>, :f64, acc), do: do_product(rest, :f64, acc * x)
+
+  defp do_product(<<x::8-little-signed, rest::binary>>, :s8, acc),
+    do: do_product(rest, :s8, acc * x)
+
+  defp do_product(<<x::8-little-unsigned, rest::binary>>, :u8, acc),
+    do: do_product(rest, :u8, acc * x)
+
+  defp do_product(<<x::16-little-signed, rest::binary>>, :s16, acc),
+    do: do_product(rest, :s16, acc * x)
+
+  defp do_product(<<x::16-little-unsigned, rest::binary>>, :u16, acc),
+    do: do_product(rest, :u16, acc * x)
+
+  defp do_product(<<x::32-little-signed, rest::binary>>, :s32, acc),
+    do: do_product(rest, :s32, acc * x)
+
+  defp do_product(<<x::32-little-unsigned, rest::binary>>, :u32, acc),
+    do: do_product(rest, :u32, acc * x)
+
+  defp do_product(<<x::64-little-signed, rest::binary>>, :s64, acc),
+    do: do_product(rest, :s64, acc * x)
+
+  defp do_product(<<x::64-little-unsigned, rest::binary>>, :u64, acc),
+    do: do_product(rest, :u64, acc * x)
+
+  defp do_product(<<x::128-little-signed, rest::binary>>, :s128, acc),
+    do: do_product(rest, :s128, acc * x)
+
+  defp do_product(<<x::128-little-unsigned, rest::binary>>, :u128, acc),
+    do: do_product(rest, :u128, acc * x)
+
+  defp do_product(<<x::256-little-signed, rest::binary>>, :s256, acc),
+    do: do_product(rest, :s256, acc * x)
+
+  defp do_product(<<x::256-little-unsigned, rest::binary>>, :u256, acc),
+    do: do_product(rest, :u256, acc * x)
+
+  defp do_product(<<x::32-little-float, rest::binary>>, :f32, acc),
+    do: do_product(rest, :f32, acc * x)
+
+  defp do_product(<<x::64-little-float, rest::binary>>, :f64, acc),
+    do: do_product(rest, :f64, acc * x)
 
   # do_min / do_max / do_min_max
   defp do_min(<<>>, _type, acc), do: acc
@@ -747,19 +846,34 @@ defimpl Enumerable, for: Errow.Numeric do
 end
 
 defimpl Collectable, for: Errow.Numeric do
-  def into(original) do
-    collector_fun = fn
-      acc, {:cont, elem} when is_number(elem) or is_nil(elem) ->
-        Errow.Numeric.append(acc, elem)
+  def into(%Errow.Numeric{type: type, item_size: item_size} = original) do
+    zero_bytes = <<0::size(item_size * 8)>>
+    encoder = Errow.Numeric.encoder_for(type)
 
-      acc, :done ->
-        acc
+    collector_fun = fn
+      {validity_acc, data_acc, len, nulls}, {:cont, nil} ->
+        {<<validity_acc::bitstring, 0::1>>, <<data_acc::binary, zero_bytes::binary>>, len + 1,
+         nulls + 1}
+
+      {validity_acc, data_acc, len, nulls}, {:cont, elem} when is_number(elem) ->
+        bin_val = encoder.(elem)
+        {<<validity_acc::bitstring, 1::1>>, <<data_acc::binary, bin_val::binary>>, len + 1, nulls}
+
+      {validity_acc, data_acc, len, nulls}, :done ->
+        %Errow.Numeric{
+          original
+          | validity: validity_acc,
+            data: data_acc,
+            length: len,
+            null_count: nulls
+        }
 
       _acc, :halt ->
         :ok
     end
 
-    {original, collector_fun}
+    initial_acc = {original.validity, original.data, original.length, original.null_count}
+    {initial_acc, collector_fun}
   end
 end
 

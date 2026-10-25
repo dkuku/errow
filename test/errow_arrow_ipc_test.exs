@@ -21,6 +21,7 @@ defmodule ErrowArrowIpcTest do
     %{buffers: [_validity, data]} = Errow.CData.export_buffers(test_arr, pad_to_8: true)
 
     assert rem(byte_size(data), 8) == 0
-    assert byte_size(data) == 800 # 100 * 8 bytes
+    # 100 * 8 bytes
+    assert byte_size(data) == 800
   end
 end

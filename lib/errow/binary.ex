@@ -375,19 +375,41 @@ defimpl Enumerable, for: Errow.Binary do
 end
 
 defimpl Collectable, for: Errow.Binary do
-  def into(original) do
-    collector_fun = fn
-      acc, {:cont, elem} when is_binary(elem) or is_nil(elem) ->
-        Errow.Binary.append(acc, elem)
+  def into(%Errow.Binary{} = original) do
+    cur_offset = byte_size(original.data)
 
-      acc, :done ->
-        acc
+    collector_fun = fn
+      {validity_acc, offsets_acc, data_acc, len, nulls, offset}, {:cont, nil} ->
+        {<<validity_acc::bitstring, 0::1>>, <<offsets_acc::binary, offset::32-little>>, data_acc,
+         len + 1, nulls + 1, offset}
+
+      {validity_acc, offsets_acc, data_acc, len, nulls, offset}, {:cont, bin}
+      when is_binary(bin) ->
+        bin_len = byte_size(bin)
+        new_offset = offset + bin_len
+
+        {<<validity_acc::bitstring, 1::1>>, <<offsets_acc::binary, new_offset::32-little>>,
+         <<data_acc::binary, bin::binary>>, len + 1, nulls, new_offset}
+
+      {validity_acc, offsets_acc, data_acc, len, nulls, _offset}, :done ->
+        %Errow.Binary{
+          original
+          | validity: validity_acc,
+            offsets: offsets_acc,
+            data: data_acc,
+            length: len,
+            null_count: nulls
+        }
 
       _acc, :halt ->
         :ok
     end
 
-    {original, collector_fun}
+    initial_acc =
+      {original.validity, original.offsets, original.data, original.length, original.null_count,
+       cur_offset}
+
+    {initial_acc, collector_fun}
   end
 end
 

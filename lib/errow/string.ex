@@ -221,7 +221,11 @@ defmodule Errow.String do
     data
   end
 
-  def join(%__MODULE__{null_count: 0, offsets: offsets, data: data, length: len}, separator, _opts) do
+  def join(
+        %__MODULE__{null_count: 0, offsets: offsets, data: data, length: len},
+        separator,
+        _opts
+      ) do
     items =
       for i <- 0..(len - 1)//1 do
         <<_::binary-size(^i * 4), start::32-little, stop::32-little, _::binary>> = offsets
@@ -470,19 +474,41 @@ defimpl Enumerable, for: Errow.String do
 end
 
 defimpl Collectable, for: Errow.String do
-  def into(original) do
-    collector_fun = fn
-      acc, {:cont, elem} when is_binary(elem) or is_nil(elem) ->
-        Errow.String.append(acc, elem)
+  def into(%Errow.String{} = original) do
+    cur_offset = byte_size(original.data)
 
-      acc, :done ->
-        acc
+    collector_fun = fn
+      {validity_acc, offsets_acc, data_acc, len, nulls, offset}, {:cont, nil} ->
+        {<<validity_acc::bitstring, 0::1>>, <<offsets_acc::binary, offset::32-little>>, data_acc,
+         len + 1, nulls + 1, offset}
+
+      {validity_acc, offsets_acc, data_acc, len, nulls, offset}, {:cont, str}
+      when is_binary(str) ->
+        str_len = byte_size(str)
+        new_offset = offset + str_len
+
+        {<<validity_acc::bitstring, 1::1>>, <<offsets_acc::binary, new_offset::32-little>>,
+         <<data_acc::binary, str::binary>>, len + 1, nulls, new_offset}
+
+      {validity_acc, offsets_acc, data_acc, len, nulls, _offset}, :done ->
+        %Errow.String{
+          original
+          | validity: validity_acc,
+            offsets: offsets_acc,
+            data: data_acc,
+            length: len,
+            null_count: nulls
+        }
 
       _acc, :halt ->
         :ok
     end
 
-    {original, collector_fun}
+    initial_acc =
+      {original.validity, original.offsets, original.data, original.length, original.null_count,
+       cur_offset}
+
+    {initial_acc, collector_fun}
   end
 end
 
